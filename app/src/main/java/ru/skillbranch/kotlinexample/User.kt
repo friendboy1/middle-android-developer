@@ -63,7 +63,7 @@ class User private constructor(
         get() = listOfNotNull(firstName, lastName)
             .map { it.first().toUpperCase() }
             .joinToString(" ")
-    private var phone: String? = null
+    internal var phone: String? = null
         set(value) {
             field = value?.replace("[^+\\d]".toRegex(), "")
         }
@@ -136,6 +136,12 @@ class User private constructor(
         } else {
             throw IllegalArgumentException("The entered password does not match the current password")
         }
+    }
+
+    fun changeAccessCode() {
+        val code = generateAccessCode()
+        passwordHash = encrypt(code)
+        accessCode = code
     }
 
     private fun encrypt(password: String): String = salt.plus(password).md5()
