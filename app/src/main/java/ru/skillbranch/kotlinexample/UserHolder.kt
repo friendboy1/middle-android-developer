@@ -22,7 +22,7 @@ object UserHolder {
     }
 
     fun registerUserByPhone(fullName: String, rawPhone: String) : User {
-        if (!rawPhone.matches("[+][\\d{11}]".toRegex())) {
+        if (!rawPhone.matches("\\+([- _():=+]?\\d[- _():=+]?){11}(\\s*)?".toRegex())) {
             throw IllegalArgumentException("Enter a valid phone number starting with a + and containing 11 digits")
         }
         return User.makeUser(fullName, phone = rawPhone).also { user ->
