@@ -1,10 +1,12 @@
 package ru.skillbranch.kotlinexample
 
 import androidx.annotation.VisibleForTesting
+import ru.skillbranch.kotlinexample.UserHolder.trimToPhone
 import java.lang.IllegalArgumentException
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.*
 
 /**
  * @author Andrei Khromov on 2019-12-10
@@ -16,61 +18,24 @@ class User private constructor(
     rawPhone: String? = null,
     meta: Map<String, Any>? = null
 ) {
-    companion object Factory {
-        private const val POSITIVE_SIGN = 1
-        private const val TIMES_TO_REPEAT = 6
-        private const val LENGTH_OF_BYTE_ARRAY = 16
-        private const val HEX_STRING_LENGTH = 32
-        private const val ALGORITHM_NAME = "MD5"
-        private const val POSSIBLE_SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghiklmnopqrstuvwxyz0123456789"
-
-        fun makeUser(
-            fullName:String,
-            email: String? = null,
-            password: String? = null,
-            phone: String? = null
-        ): User {
-            val (firstName, lastName) = fullName.fullNameToPair()
-            return when {
-                !phone.isNullOrBlank() -> User(firstName, lastName, phone)
-                !email.isNullOrBlank() && !password.isNullOrBlank() -> User(firstName, lastName, email, password)
-                else -> throw IllegalArgumentException("Email or phone must be not null or blank")
-            }
-        }
-
-        private fun String.fullNameToPair() : Pair<String, String?> {
-            return this.split(" ")
-                .filter {
-                    it.isNotBlank()
-                }
-                .run {
-                    when (size) {
-                        1 -> first() to null
-                        2 -> first() to last()
-                        else -> throw IllegalArgumentException("Fullname must contain only first " +
-                                "name and last name, current split result: $this")
-                    }
-                }
-        }
-    }
 
     val userInfo: String
     private val fullName: String
         get() = listOfNotNull(firstName, lastName)
             .joinToString(" ")
-            .capitalize()
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     private val initials: String
         get() = listOfNotNull(firstName, lastName)
-            .map { it.first().toUpperCase() }
+            .map { it.first().uppercaseChar() }
             .joinToString(" ")
     internal var phone: String? = null
         set(value) {
-            field = value?.replace("[^+\\d]".toRegex(), "")
+            field = value?.trimToPhone()
         }
     private var _login: String? = null
     internal var login: String
         set(value) {
-            _login = value?.toLowerCase()
+            _login = value.lowercase(Locale.getDefault())
         }
         get() = _login!!
     private val salt: String by lazy {
@@ -110,7 +75,7 @@ class User private constructor(
     init {
         println("First init block, primary constructor was called")
 
-        check(!firstName.isBlank()) { "First name must be not blank" }
+        check(firstName.isNotBlank()) { "First name must be not blank" }
         check(email.isNullOrBlank() || rawPhone.isNullOrBlank()) { "Email or phone must be not blank" }
 
         phone = rawPhone
@@ -163,5 +128,51 @@ class User private constructor(
         val digest = messageDigest.digest(toByteArray()) //16 byte
         val hexString = BigInteger(POSITIVE_SIGN, digest).toString(LENGTH_OF_BYTE_ARRAY)
         return hexString.padStart(HEX_STRING_LENGTH, '0')
+    }
+
+    companion object Factory {
+        private const val POSITIVE_SIGN = 1
+        private const val TIMES_TO_REPEAT = 6
+        private const val LENGTH_OF_BYTE_ARRAY = 16
+        private const val HEX_STRING_LENGTH = 32
+        private const val ALGORITHM_NAME = "MD5"
+        private const val POSSIBLE_SYMBOLS =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghiklmnopqrstuvwxyz0123456789"
+
+        fun makeUser(
+            fullName: String,
+            email: String? = null,
+            password: String? = null,
+            phone: String? = null
+        ): User {
+            val (firstName, lastName) = fullName.fullNameToPair()
+            return when {
+                !phone.isNullOrBlank() -> User(firstName, lastName, phone)
+                !email.isNullOrBlank() && !password.isNullOrBlank() -> User(
+                    firstName,
+                    lastName,
+                    email,
+                    password
+                )
+                else -> throw IllegalArgumentException("Email or phone must be not null or blank")
+            }
+        }
+
+        private fun String.fullNameToPair(): Pair<String, String?> {
+            return this.split(" ")
+                .filter {
+                    it.isNotBlank()
+                }
+                .run {
+                    when (size) {
+                        1 -> first() to null
+                        2 -> first() to last()
+                        else -> throw IllegalArgumentException(
+                            "Fullname must contain only first " +
+                                    "name and last name, current split result: $this"
+                        )
+                    }
+                }
+        }
     }
 }
